@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" href="/assets/favicon-light.png" />
+    <link rel="icon" type="image/png" href="/assets/favicon-light.png" media="(prefers-color-scheme: light)" />
+    <link rel="icon" type="image/png" href="/assets/favicon-dark.png" media="(prefers-color-scheme: dark)" />
+    <link rel="apple-touch-icon" href="/assets/favicon-light.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content" />
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#FDFBF7" media="(prefers-color-scheme: light)" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="CHAY" />
+    <meta name="description" content="ÉGLISE CHAY — Communauté chrétienne : Bible, multimédia, radio, jeux, espace enfants et dons." />
+    <link rel="stylesheet" href="/fonts/fonts.css" />
+    <title>ÉGLISE CHAY</title>
+    <script>
+      // Anti-flash : applique le thème AVANT le premier rendu React.
+      //
+      // Règle : la préférence enregistrée ("chay-theme") est prioritaire ;
+      // sans préférence (nouvelle installation), le mode SOMBRE est le défaut.
+      // Ce script est en LECTURE SEULE — il n'écrase jamais la préférence.
+      (function () {
+        var KEY = "chay-theme"; // doit rester synchronisé avec src/lib/theme.js
+        var theme = null;
+        try {
+          theme = localStorage.getItem(KEY);
+        } catch (e) {}
+        if (theme !== "light" && theme !== "dark" && theme !== "auto") {
+          theme = "dark"; // aucune préférence / valeur invalide => défaut sombre
+        }
+        var dark =
+          theme === "dark" ||
+          (theme === "auto" &&
+            window.matchMedia("(prefers-color-scheme: dark)").matches);
+        document.documentElement.classList.toggle("dark", dark);
+      })();
+    </script>
+  </head>
+  <body class="bg-black">
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
