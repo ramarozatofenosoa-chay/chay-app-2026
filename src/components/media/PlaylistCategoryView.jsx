@@ -365,8 +365,8 @@ export default function PlaylistCategoryView({
     video_url: t.video_url,
     cover_url: t.cover_url,
     kind: t.kind,
-    source_playlist_id: open?.id,
-    source_playlist_name: open?.name,
+    source_playlist_id: null,
+    source_playlist_name: null,
   });
 
   if (open) {

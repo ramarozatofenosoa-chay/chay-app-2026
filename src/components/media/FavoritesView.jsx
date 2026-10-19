@@ -139,8 +139,6 @@ export default function FavoritesView({
   isPlaying,
   playPlaylistItem,
   removeFromPlaylist,
-  onReorderItems,
-  onReorderPlaylists,
 }) {
   const [locked, setLocked] = useState(true);
   const [orderedItems, setOrderedItems] = useState([]);
@@ -156,38 +154,27 @@ export default function FavoritesView({
 
   const groups = useMemo(() => groupMusicFavorites(orderedItems), [orderedItems]);
 
-  const handleReorderGroups = useCallback((next) => {
-    const orders = new Map(next.map((group, index) => [group.id, index]));
+  const handleReorderItems = useCallback((nextItems) => {
+    const orders = new Map(nextItems.map((item, index) => [item.id, index]));
     setOrderedItems((items) => items.map((item) => ({
       ...item,
-      playlist_order: orders.get(item.source_playlist_id || "legacy-favorites"),
+      order: orders.get(item.id) ?? item.order,
     })));
-    onReorderPlaylists?.(next);
-  }, [onReorderPlaylists]);
+  }, []);
 
-  const handleReorderGroupItems = useCallback((group, nextItems) => {
-    setOrderedItems((items) => {
-      const orders = new Map(nextItems.map((item, index) => [item.id, index]));
-      return items.map((item) => (item.source_playlist_id || "legacy-favorites") === group.id
-        ? { ...item, order: orders.get(item.id) ?? item.order }
-        : item);
-    });
-    onReorderItems?.(group.id, nextItems);
-  }, [onReorderItems]);
-
-  const groupDrag = useDragSort(groups, handleReorderGroups);
+  const groupDrag = useDragSort(groups, handleReorderItems);
 
   return (
     <div>
       <div className="mb-5 flex items-center justify-between gap-3">
         <p className="text-sm text-foreground/55">
-          Vos chansons favorites, classées par playlist d’origine.
+          Vos chansons favorites, toutes dans une seule playlist.
         </p>
         <button
           type="button"
           onClick={() => setLocked((value) => !value)}
-          title={locked ? "Déverrouiller pour réorganiser" : "Verrouiller l’ordre"}
-          aria-label={locked ? "Déverrouiller pour réorganiser" : "Verrouiller l’ordre"}
+          title={locked ? "Déverrouiller pour réorganiser" : "Verrouiller l'ordre"}
+          aria-label={locked ? "Déverrouiller pour réorganiser" : "Verrouiller l'ordre"}
           aria-pressed={!locked}
           className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border transition ${
             locked
@@ -209,7 +196,7 @@ export default function FavoritesView({
               groupsCount={groups.length}
               locked={locked}
               groupDrag={groupDrag}
-              onReorderItems={handleReorderGroupItems}
+              onReorderItems={handleReorderItems}
               currentTrack={currentTrack}
               isPlaying={isPlaying}
               playPlaylistItem={playPlaylistItem}
@@ -219,7 +206,7 @@ export default function FavoritesView({
         </div>
       ) : (
         <p className="text-foreground/50 text-sm">
-          Aucune chanson favorite pour le moment. Touchez l’étoile dans une playlist musicale pour en ajouter.
+          Aucune chanson favorite pour le moment. Touchez l'étoile dans la liste Musique pour en ajouter.
         </p>
       )}
     </div>
