@@ -1,24 +1,21 @@
 export function groupMusicFavorites(items) {
-  const bySource = new Map();
-  (Array.isArray(items) ? items : [])
-    .filter((item) => (item.category || "music") === "music" && item.kind !== "video")
-    .forEach((item) => {
-      const id = item.source_playlist_id || "legacy-favorites";
-      if (!bySource.has(id)) {
-        bySource.set(id, {
-          id,
-          name: item.source_playlist_name || "Ma playlist",
-          order: item.playlist_order ?? 99999,
-          items: [],
-        });
-      }
-      bySource.get(id).items.push(item);
-    });
+  // 1. On filtre pour ne garder que les musiques (pas les vidéos)
+  const allFavorites = (Array.isArray(items) ? items : [])
+    .filter((item) => (item.category || "music") === "music" && item.kind !== "video");
 
-  return [...bySource.values()]
-    .map((group) => ({
-      ...group,
-      items: group.items.sort((a, b) => (a.order ?? 99999) - (b.order ?? 99999)),
-    }))
-    .sort((a, b) => a.order - b.order);
+  // 2. On trie TOUTES les chansons par le champ "order" (le cadenas/ordre)
+  const sortedFavorites = allFavorites.sort((a, b) => {
+    const valA = a.order ?? 99999;
+    const valB = b.order ?? 99999;
+    return valA - valB;
+  });
+
+  // 3. On retourne un SEUL groupe nommé "Toutes les chansons"
+  // Cela empêche l'interface de créer des sous-catégories (Inspiration, Instrumental, etc.)
+  return [{
+    id: "all-favorites",
+    name: "Toutes les chansons",
+    order: 0,
+    items: sortedFavorites
+  }];
 }
