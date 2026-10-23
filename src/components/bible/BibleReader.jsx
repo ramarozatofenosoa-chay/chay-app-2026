@@ -34,6 +34,8 @@ export default function BibleReader({ onBack }) {
   const { toast } = useToast();
   const { user, isLocalMode } = useAuth();
   const didInitRef = useRef(false);
+  const chapterGridRef = useRef(null); // <-- NOUVEAU : Référence pour la grille des chapitres
+
   // Langue et version initiales : ?translation=… (lien depuis la concordance).
   const initialVersion = (() => {
     const t = new URLSearchParams(window.location.search).get("translation");
@@ -61,6 +63,16 @@ export default function BibleReader({ onBack }) {
   const [annotations, setAnnotations] = useState({});
   const [selected, setSelected] = useState([]);
   const [sheetOpen, setSheetOpen] = useState(false);
+
+  // NOUVEAU : Autoscroll vers le chapitre actif dans la grille
+  useEffect(() => {
+    if (chapterGridRef.current && selectedChapter) {
+      const activeEl = chapterGridRef.current.querySelector(`[data-chapter="${selectedChapter}"]`);
+      if (activeEl) {
+        activeEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }
+    }
+  }, [selectedChapter]);
 
   // Catalogue des 66 livres de la langue choisie, lu depuis le fichier local.
   // Les ids de livres sont identiques en FR et MG (GEN, EXO… REV) : le livre
@@ -316,13 +328,33 @@ export default function BibleReader({ onBack }) {
                 triggerClassName="flex-[2] min-w-0 px-3 py-2 text-xs gap-1.5"
                 options={books.map((b) => ({ label: b.name, value: b.id }))}
               />
-              <DrawerSelect
-                value={selectedChapter}
-                onChange={(v) => setSelectedChapter(Number(v))}
-                title="Chapitre"
-                triggerClassName="flex-1 min-w-0 px-3 py-2 text-xs gap-1.5"
-                options={chapterNumbers.map((c) => ({ label: String(c), value: c }))}
-              />
+              
+              {/* NOUVEAU : Grille de chapitres avec défilement vertical */}
+              <div className="flex-1 min-w-0">
+                <div className="text-[10px] font-semibold text-muted-foreground mb-1">Chapitre</div>
+                <div 
+                  ref={chapterGridRef}
+                  className="flex flex-wrap gap-1 max-h-[42mm] overflow-y-auto [&::-webkit-scrollbar]:hidden"
+                  style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                >
+                  {chapterNumbers.map((c) => (
+                    <button
+                      key={c}
+                      data-chapter={c}
+                      onClick={() => setSelectedChapter(c)}
+                      className={`w-[4mm] h-[4mm] min-w-[4mm] min-h-[4mm] flex items-center justify-center text-[10px] font-bold rounded-sm transition-colors leading-none ${
+                        selectedChapter === c 
+                          ? 'bg-primary text-primary-foreground' 
+                          : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                      }`}
+                    >
+                      {c}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {/* FIN NOUVEAU */}
+
             </div>
           )}
         </div>
