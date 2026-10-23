@@ -1,26 +1,34 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { groupMusicFavorites } from "./favoritePlaylists.js";
+import { listMusicFavorites } from "./favoritePlaylists.js";
 
-test("groups music favorites by their source playlist and preserves order", () => {
-  const groups = groupMusicFavorites([
-    { id: "b2", track_id: "same", category: "music", source_playlist_id: "b", source_playlist_name: "B", playlist_order: 1, order: 1 },
-    { id: "a1", track_id: "same", category: "music", source_playlist_id: "a", source_playlist_name: "A", playlist_order: 0, order: 0 },
-    { id: "b1", track_id: "other", category: "music", source_playlist_id: "b", source_playlist_name: "B", playlist_order: 1, order: 0 },
-    { id: "film", category: "films", kind: "video", source_playlist_id: "c" },
+test("returns a flat list, newest additions first, without categories", () => {
+  const items = listMusicFavorites([
+    { id: "old", category: "music", source_playlist_id: "a", created_date: "2026-01-01T00:00:00Z" },
+    { id: "new", category: "music", source_playlist_id: "b", created_date: "2026-03-01T00:00:00Z" },
+    { id: "mid", category: "music", source_playlist_id: "c", created_date: "2026-02-01T00:00:00Z" },
+    { id: "film", category: "films", kind: "video", source_playlist_id: "d" },
   ]);
 
-  assert.deepEqual(groups.map((group) => group.id), ["a", "b"]);
-  assert.deepEqual(groups[1].items.map((item) => item.id), ["b1", "b2"]);
-  assert.equal(groups[0].items[0].track_id, groups[1].items[1].track_id);
+  assert.deepEqual(items.map((item) => item.id), ["new", "mid", "old"]);
 });
 
-test("keeps legacy music favorites in one fallback playlist", () => {
-  const groups = groupMusicFavorites([
-    { id: "1", category: "music", title: "First" },
-    { id: "2", category: "music", title: "Second" },
+test("manual order wins over the addition date", () => {
+  const items = listMusicFavorites([
+    { id: "a", category: "music", order: 5, created_date: "2026-03-01T00:00:00Z" },
+    { id: "b", category: "music", order: 1, created_date: "2026-01-01T00:00:00Z" },
+    { id: "c", category: "music", order: 5, created_date: "2026-02-01T00:00:00Z" },
   ]);
-  assert.equal(groups.length, 1);
-  assert.equal(groups[0].id, "legacy-favorites");
-  assert.deepEqual(groups[0].items.map((item) => item.id), ["1", "2"]);
+
+  // b (ordre 1) d'abord ; puis ordre manuel égal (5) → date d'ajout la plus récente.
+  assert.deepEqual(items.map((item) => item.id), ["b", "a", "c"]);
+});
+
+test("keeps legacy music favorites without explicit fields", () => {
+  const items = listMusicFavorites([
+    { id: "1", category: "music", title: "First", created_date: "2026-01-01T00:00:00Z" },
+    { id: "2", title: "Second", created_date: "2026-02-01T00:00:00Z" },
+  ]);
+
+  assert.deepEqual(items.map((item) => item.id), ["2", "1"]);
 });

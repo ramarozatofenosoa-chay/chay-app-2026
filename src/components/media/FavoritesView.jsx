@@ -1,6 +1,6 @@
-import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import React, { useMemo, useRef, useState, useCallback } from "react";
 import { GripVertical, Lock, Unlock, Music, Play, Pause, Trash2 } from "lucide-react";
-import { groupMusicFavorites } from "@/lib/favoritePlaylists";
+import { listMusicFavorites } from "@/lib/favoritePlaylists";
 
 function useDragSort(items, onReorder) {
   const listRef = useRef(null);
@@ -57,82 +57,6 @@ function useDragSort(items, onReorder) {
   return { listRef, onMouseDown, onTouchStart };
 }
 
-function FavoriteGroup({
-  group,
-  groupIndex,
-  groupsCount,
-  locked,
-  groupDrag,
-  onReorderItems,
-  currentTrack,
-  isPlaying,
-  playPlaylistItem,
-  removeFromPlaylist,
-}) {
-  const itemDrag = useDragSort(group.items, (next) => onReorderItems(group, next));
-  return (
-    <section className="rounded-2xl border border-border bg-card p-4">
-      <div className="mb-3 flex items-center gap-2">
-        {!locked && groupsCount > 1 && (
-          <button
-            type="button"
-            aria-label={`Réorganiser ${group.name}`}
-            className="cursor-grab touch-none text-foreground/45"
-            onMouseDown={groupDrag.onMouseDown(groupIndex)}
-            onTouchStart={groupDrag.onTouchStart(groupIndex)}
-          >
-            <GripVertical className="h-5 w-5" />
-          </button>
-        )}
-        <Music className="h-4 w-4 text-primary" />
-        <h3 className="font-bold">{group.name}</h3>
-      </div>
-      <div ref={locked ? null : itemDrag.listRef} className="space-y-2">
-        {group.items.map((item, index) => (
-          <div key={item.id} className="flex items-center gap-3 rounded-xl border border-border/70 p-3">
-            {!locked && group.items.length > 1 && (
-              <button
-                type="button"
-                aria-label={`Réorganiser ${item.title}`}
-                className="cursor-grab touch-none text-foreground/40"
-                onMouseDown={itemDrag.onMouseDown(index)}
-                onTouchStart={itemDrag.onTouchStart(index)}
-              >
-                <GripVertical className="h-4 w-4" />
-              </button>
-            )}
-            <div className="h-10 w-10 rounded-full bg-primary text-primary-foreground grid place-items-center shrink-0">
-              <Music className="h-4 w-4" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="font-bold truncate">{item.title}</div>
-              <div className="text-xs text-foreground/55">{item.artist || "Audio"}</div>
-            </div>
-            <button
-              type="button"
-              onClick={() => playPlaylistItem(item)}
-              className="h-10 w-10 rounded-full bg-primary text-primary-foreground grid place-items-center"
-              aria-label={currentTrack?.id === item.track_id && isPlaying ? "Mettre en pause" : "Lire"}
-            >
-              {currentTrack?.id === item.track_id && isPlaying
-                ? <Pause className="h-4 w-4" />
-                : <Play className="h-4 w-4" />}
-            </button>
-            <button
-              type="button"
-              onClick={() => removeFromPlaylist(item.id)}
-              className="h-9 w-9 grid place-items-center rounded-full text-foreground/50 hover:text-destructive hover:bg-muted"
-              aria-label={`Retirer ${item.title} des favoris`}
-            >
-              <Trash2 className="h-4 w-4" />
-            </button>
-          </div>
-        ))}
-      </div>
-    </section>
-  );
-}
-
 export default function FavoritesView({
   playlist = [],
   currentTrack,
@@ -140,48 +64,22 @@ export default function FavoritesView({
   playPlaylistItem,
   removeFromPlaylist,
   onReorderItems,
-  onReorderPlaylists,
 }) {
   const [locked, setLocked] = useState(true);
-  const [orderedItems, setOrderedItems] = useState([]);
+  // Liste plate : aucune catégorie/playlist d'origine n'est affichée ici.
+  const items = useMemo(() => listMusicFavorites(playlist), [playlist]);
 
-  useEffect(() => {
-    setOrderedItems(
-      playlist
-        .filter((item) => (item.category || "music") === "music" && item.kind !== "video")
-        .sort((a, b) => (a.playlist_order ?? 99999) - (b.playlist_order ?? 99999)
-          || (a.order ?? 99999) - (b.order ?? 99999))
-    );
-  }, [playlist]);
-
-  const groups = useMemo(() => groupMusicFavorites(orderedItems), [orderedItems]);
-
-  const handleReorderGroups = useCallback((next) => {
-    const orders = new Map(next.map((group, index) => [group.id, index]));
-    setOrderedItems((items) => items.map((item) => ({
-      ...item,
-      playlist_order: orders.get(item.source_playlist_id || "legacy-favorites"),
-    })));
-    onReorderPlaylists?.(next);
-  }, [onReorderPlaylists]);
-
-  const handleReorderGroupItems = useCallback((group, nextItems) => {
-    setOrderedItems((items) => {
-      const orders = new Map(nextItems.map((item, index) => [item.id, index]));
-      return items.map((item) => (item.source_playlist_id || "legacy-favorites") === group.id
-        ? { ...item, order: orders.get(item.id) ?? item.order }
-        : item);
-    });
-    onReorderItems?.(group.id, nextItems);
+  const handleReorder = useCallback((nextItems) => {
+    onReorderItems?.("all-favorites", nextItems);
   }, [onReorderItems]);
 
-  const groupDrag = useDragSort(groups, handleReorderGroups);
+  const drag = useDragSort(items, handleReorder);
 
   return (
     <div>
       <div className="mb-5 flex items-center justify-between gap-3">
         <p className="text-sm text-foreground/55">
-          Vos chansons favorites, classées par playlist d’origine.
+          Vos chansons favorites, classées par ordre d’ajout.
         </p>
         <button
           type="button"
@@ -199,24 +97,51 @@ export default function FavoritesView({
         </button>
       </div>
 
-      {groups.length ? (
-        <div ref={locked ? null : groupDrag.listRef} className="space-y-5">
-          {groups.map((group, groupIndex) => (
-            <FavoriteGroup
-              key={group.id}
-              group={group}
-              groupIndex={groupIndex}
-              groupsCount={groups.length}
-              locked={locked}
-              groupDrag={groupDrag}
-              onReorderItems={handleReorderGroupItems}
-              currentTrack={currentTrack}
-              isPlaying={isPlaying}
-              playPlaylistItem={playPlaylistItem}
-              removeFromPlaylist={removeFromPlaylist}
-            />
-          ))}
-        </div>
+      {items.length ? (
+        <section className="rounded-2xl border border-border bg-card p-4">
+          <div ref={locked ? null : drag.listRef} className="space-y-2">
+            {items.map((item, index) => (
+              <div key={item.id} className="flex items-center gap-3 rounded-xl border border-border/70 p-3">
+                {!locked && items.length > 1 && (
+                  <button
+                    type="button"
+                    aria-label={`Réorganiser ${item.title}`}
+                    className="cursor-grab touch-none text-foreground/40"
+                    onMouseDown={drag.onMouseDown(index)}
+                    onTouchStart={drag.onTouchStart(index)}
+                  >
+                    <GripVertical className="h-4 w-4" />
+                  </button>
+                )}
+                <div className="h-10 w-10 rounded-full bg-primary text-primary-foreground grid place-items-center shrink-0">
+                  <Music className="h-4 w-4" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="font-bold truncate">{item.title}</div>
+                  <div className="text-xs text-foreground/55">{item.artist || "Audio"}</div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => playPlaylistItem(item)}
+                  className="h-10 w-10 rounded-full bg-primary text-primary-foreground grid place-items-center"
+                  aria-label={currentTrack?.id === item.track_id && isPlaying ? "Mettre en pause" : "Lire"}
+                >
+                  {currentTrack?.id === item.track_id && isPlaying
+                    ? <Pause className="h-4 w-4" />
+                    : <Play className="h-4 w-4" />}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => removeFromPlaylist(item.id)}
+                  className="h-9 w-9 grid place-items-center rounded-full text-foreground/50 hover:text-destructive hover:bg-muted"
+                  aria-label={`Retirer ${item.title} des favoris`}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
+            ))}
+          </div>
+        </section>
       ) : (
         <p className="text-foreground/50 text-sm">
           Aucune chanson favorite pour le moment. Touchez l’étoile dans une playlist musicale pour en ajouter.

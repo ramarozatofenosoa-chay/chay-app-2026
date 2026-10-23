@@ -61,7 +61,7 @@ export default function MediaCategory({
   addToPlaylist, removeFromPlaylist, playPlaylistItem, isPinned,
   playlists = [], playlistTracks = [],
   onGalleryItemUpdated, onGalleryItemDeleted,
-  onReorderFavoriteItems, onReorderFavoritePlaylists,
+  onReorderFavoriteItems,
 }) {
   const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -383,7 +383,6 @@ export default function MediaCategory({
           playPlaylistItem={playPlaylistItem}
           removeFromPlaylist={removeFromPlaylist}
           onReorderItems={onReorderFavoriteItems}
-          onReorderPlaylists={onReorderFavoritePlaylists}
         />
       )}
     </div>

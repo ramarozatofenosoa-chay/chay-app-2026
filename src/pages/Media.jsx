@@ -110,18 +110,13 @@ export default function Media() {
       if (playlist.some((p) =>
         p.track_id === item.id && p.source_playlist_id === item.source_playlist_id
       )) {
-        toast({ title: "Déjà dans cette playlist de favoris" });
+        toast({ title: "Déjà dans vos favoris" });
         return;
       }
-      const samePlaylistItems = playlist.filter(
-        (p) => p.source_playlist_id === item.source_playlist_id
-      );
-      const nextTrackOrder = samePlaylistItems.length
-        ? Math.max(...samePlaylistItems.map((p) => p.order ?? -1)) + 1
-        : 0;
-      const nextPlaylistOrder = samePlaylistItems.length
-        ? Math.min(...samePlaylistItems.map((p) => p.playlist_order ?? 99999))
-        : playlist.reduce((max, p) => Math.max(max, (p.playlist_order ?? -1) + 1), 0);
+      // « Votre Playlist » est une liste plate sans catégorie : l'ordre
+      // initial correspond à la date d'ajout (le plus récent en premier),
+      // puis reste ajustable manuellement via le cadenas.
+      const nextTrackOrder = playlist.reduce((max, p) => Math.max(max, (p.order ?? -1)), -1) + 1;
       await base44.entities.PlaylistItem.create({
         track_id: item.id,
         title: item.title,
@@ -134,9 +129,8 @@ export default function Media() {
         source_playlist_id: item.source_playlist_id,
         source_playlist_name: item.source_playlist_name,
         order: nextTrackOrder,
-        playlist_order: nextPlaylistOrder,
       });
-      toast({ title: `Ajouté aux favoris : ${item.source_playlist_name || "playlist"}` });
+      toast({ title: `Ajouté aux favoris : ${item.title}` });
       await loadAll();
     } catch (e) {
       toast({ title: "Erreur", description: e.message, variant: "destructive" });
@@ -166,39 +160,19 @@ export default function Media() {
   const isPinned = (id, sourcePlaylistId) =>
     playlist.some((p) => p.track_id === id && p.source_playlist_id === sourcePlaylistId);
 
-  const reorderFavoriteItems = async (sourcePlaylistId, nextItems) => {
+  const reorderFavoriteItems = async (groupId, nextItems) => {
+    // Liste plate : « groupId » n'est plus utilisé, l'ordre porte sur
+    // l'ensemble des chansons favorites.
     const orders = new Map(nextItems.map((item, index) => [item.id, index]));
     const updates = nextItems.map((item) => ({
       ...item,
       order: orders.get(item.id),
     }));
-    setPlaylist((current) => current.map((item) => {
-      const key = item.source_playlist_id || "legacy-favorites";
-      return key === sourcePlaylistId ? { ...item, order: orders.get(item.id) ?? item.order } : item;
-    }));
+    setPlaylist((current) => current.map((item) => (
+      orders.has(item.id) ? { ...item, order: orders.get(item.id) } : item
+    )));
     const results = await Promise.all(updates.map((item) =>
       base44.entities.PlaylistItem.update(item.id, { order: item.order }).then(() => true, () => false)
-    ));
-    if (results.includes(false)) {
-      toast({ title: "Réorganisation non enregistrée", variant: "destructive" });
-      await loadAll();
-    }
-  };
-
-  const reorderFavoritePlaylists = async (nextGroups) => {
-    const orderById = new Map(nextGroups.map((group, index) => [group.id, index]));
-    const updates = playlist
-      .filter((item) => orderById.has(item.source_playlist_id || "legacy-favorites"))
-      .map((item) => ({
-        id: item.id,
-        playlist_order: orderById.get(item.source_playlist_id || "legacy-favorites"),
-      }));
-    setPlaylist((current) => current.map((item) => {
-      const key = item.source_playlist_id || "legacy-favorites";
-      return orderById.has(key) ? { ...item, playlist_order: orderById.get(key) } : item;
-    }));
-    const results = await Promise.all(updates.map((item) =>
-      base44.entities.PlaylistItem.update(item.id, { playlist_order: item.playlist_order }).then(() => true, () => false)
     ));
     if (results.includes(false)) {
       toast({ title: "Réorganisation non enregistrée", variant: "destructive" });
@@ -250,7 +224,6 @@ export default function Media() {
           playPlaylistItem={playPlaylistItem}
           isPinned={isPinned}
           onReorderFavoriteItems={reorderFavoriteItems}
-          onReorderFavoritePlaylists={reorderFavoritePlaylists}
           playlists={playlists}
           playlistTracks={playlistTracks}
           onGalleryItemUpdated={(updated) =>
